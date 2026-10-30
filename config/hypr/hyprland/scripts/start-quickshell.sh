@@ -55,12 +55,18 @@ export MALLOC_TRIM_THRESHOLD_="${MALLOC_TRIM_THRESHOLD_:-131072}"
 # started from the shell go through Hyprland's exec, so they keep the GPU.
 # But every texture then lives in RAM: the shell grew from ~540 MB to 1.3 GB and
 # more, and a 4 GB laptop swapped until it froze. So only with 8 GB or more.
+# Without the RAM, the shell stays on the GPU and is told (QS_NO_ALPHA): its
+# popups then have no see-through margin, square corners and no slide.
 mem_kb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null)
-if [ -z "${LIBGL_ALWAYS_SOFTWARE:-}" ] && [ "${mem_kb:-0}" -ge 7500000 ] && command -v python3 >/dev/null 2>&1 \
-    && ! python3 -I "$HERE/egl-has-alpha.py" 2>/dev/null \
-    && LIBGL_ALWAYS_SOFTWARE=1 python3 -I "$HERE/egl-has-alpha.py" 2>/dev/null; then
-    echo "start-quickshell: this GPU cannot draw transparent windows; using llvmpipe" >&2
-    export LIBGL_ALWAYS_SOFTWARE=1
+if [ -z "${LIBGL_ALWAYS_SOFTWARE:-}" ] && command -v python3 >/dev/null 2>&1 \
+    && ! python3 -I "$HERE/egl-has-alpha.py" 2>/dev/null; then
+    if [ "${mem_kb:-0}" -ge 7500000 ] && LIBGL_ALWAYS_SOFTWARE=1 python3 -I "$HERE/egl-has-alpha.py" 2>/dev/null; then
+        echo "start-quickshell: this GPU cannot draw transparent windows; using llvmpipe" >&2
+        export LIBGL_ALWAYS_SOFTWARE=1
+    else
+        echo "start-quickshell: this GPU cannot draw transparent windows; popups without see-through parts" >&2
+        export QS_NO_ALPHA=1
+    fi
 fi
 
 # Normally the first attempt wins now that the environment is correct. The
