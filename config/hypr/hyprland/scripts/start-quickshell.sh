@@ -53,7 +53,10 @@ export MALLOC_TRIM_THRESHOLD_="${MALLOC_TRIM_THRESHOLD_:-131072}"
 # them and still runs the shell's shaders; it costs CPU only while something
 # animates (a start menu open: ~40 % of one core on an i3-4000M, idle: 0). Apps
 # started from the shell go through Hyprland's exec, so they keep the GPU.
-if [ -z "${LIBGL_ALWAYS_SOFTWARE:-}" ] && command -v python3 >/dev/null 2>&1 \
+# But every texture then lives in RAM: the shell grew from ~540 MB to 1.3 GB and
+# more, and a 4 GB laptop swapped until it froze. So only with 8 GB or more.
+mem_kb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null)
+if [ -z "${LIBGL_ALWAYS_SOFTWARE:-}" ] && [ "${mem_kb:-0}" -ge 7500000 ] && command -v python3 >/dev/null 2>&1 \
     && ! python3 -I "$HERE/egl-has-alpha.py" 2>/dev/null \
     && LIBGL_ALWAYS_SOFTWARE=1 python3 -I "$HERE/egl-has-alpha.py" 2>/dev/null; then
     echo "start-quickshell: this GPU cannot draw transparent windows; using llvmpipe" >&2
